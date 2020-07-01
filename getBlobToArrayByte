@@ -1,0 +1,18 @@
+public static String getBlobToArrayByte(String blobCode){
+
+		String encodedByte = null;
+		try{
+			BASE64Decoder decoder = new BASE64Decoder();
+			byte[] imageByte = decoder.decodeBuffer(blobCode);
+			ByteBuffer buf = ByteBuffer.wrap(imageByte);
+			InputStream in = new ByteArrayInputStream(buf.array());
+			BufferedImage image = ImageIO.read(in);
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			ImageIO.write(image, "png", baos);
+			encodedByte = Base64.encode(baos.toByteArray());
+		}catch (IOException e){
+			Debug.logError("can't able to convert BLOB to byteArray: " +e, MODULE);
+			return "error";
+		}
+		return encodedByte;
+    }     
