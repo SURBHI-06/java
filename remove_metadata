@@ -1,0 +1,40 @@
+/* i have convert image file->ImageInputStream->InputStream
+then from inputstream remove metadata by using appache commons imaging java lib and strong in outputStream of ByteArrayOutputStream 
+after outputStream-> InputStream->ImageInputStream 
+you dont have to use store everytime in file for emoving metadata you can use streams for removing also and at last you can store in file or any selected place(aws, url,etc).
+*/
+		//FileInputStream imageFile = new FileInputStream(new File("/path/to/photo.jpg"));
+				FileOutputStream imageOutFile = new FileOutputStream(new File("photo_without_metadata_1.jpeg"));
+				BufferedImage image = ImageIO.read(new File("/home/surbhi/Desktop/I7wX1f0KvH_up.jpeg"));
+				ByteArrayOutputStream baos = new ByteArrayOutputStream();
+				ImageIO.write(image, "jpeg", baos);
+				byte[] bytes1 = baos.toByteArray();
+		    InputStream imageStream = new ByteArrayInputStream(bytes1);
+				OutputStream out = new ByteArrayOutputStream();
+				ImageInputStream img2 = ImageIO.createImageInputStream(imageStream);
+				Iterator<ImageReader> i = ImageIO.getImageReaders(img2);
+				System.out.println(i);
+				if (i.hasNext()) {
+					System.out.println("i am here");
+					ImageReader r = i.next();
+					 r.setInput(img2);
+					 BufferedImage img = r.read(0);
+					 ByteArrayOutputStream os = new ByteArrayOutputStream();
+					 ImageIO.write(img, "jpeg", os);
+					 InputStream is = new ByteArrayInputStream(os.toByteArray());
+					 try {
+						 System.out.println("i came here");
+						new ExifRewriter().removeExifMetadata(is, out);
+					} catch (ImageReadException e) {
+						e.printStackTrace();
+					} catch (ImageWriteException e) {
+						e.printStackTrace();
+					}
+				}
+				 ByteArrayOutputStream buffer = (ByteArrayOutputStream) out;
+				 byte[] bytes = buffer.toByteArray();
+				 //InputStream image = new ByteArrayInputStream(bytes);                // this can be used for storing in inputStream or ImageInputStream
+		     //uploadedImageStream = ImageIO.createImageInputStream(image);
+				 imageOutFile.write(bytes);                                            // sending to the file
+				 imageOutFile.flush();
+				 imageOutFile.close();
