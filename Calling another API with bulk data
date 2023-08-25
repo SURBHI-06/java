@@ -1,0 +1,84 @@
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+
+public class sample {
+	public static void main(String[] args) {
+    //C:\\Users\\Surbhi\\Downloads\\admin_addresses_202308251122.html
+		String htmlFilePath = "Give file path name";
+
+		try (BufferedReader reader = new BufferedReader(new FileReader(htmlFilePath))) {
+			String line;
+			while ((line = reader.readLine()) != null) {
+				if (line.contains("<tr") && line.contains("</tr>")) {
+					String[] columns = line.split("</?td>");
+					String id = columns[1];
+					String address1 = columns[7];
+					String city = columns[15];
+					String country = columns[19];
+					String zipcode = columns[21];
+					String useCountry = country.equals("United States")? "US" : country.equals("Canada")? "CA": null;
+					System.out.println(
+							"id: " + id + ", address1: " + address1 + ", city: " + city + ", zipcode: " + zipcode);
+					if (address1.equals("&nbsp;")) {
+						System.out.println("with empty space : " + id);
+					} //else if (country.equals("United States")) {
+					else {
+						String apiUrl = "https://sandbox-rest.avatax.com/api/v2/transactions/create";
+						String username = "SamuelCaron";
+						String password = "123Poste!";
+
+						String authHeader = createBasicAuthHeader(username, password);
+
+						URL url = new URL(apiUrl);
+						HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+
+						connection.setRequestMethod("POST");
+						connection.setRequestProperty("Authorization", authHeader);
+						connection.setRequestProperty("Content-Type", "application/json");
+						connection.setDoOutput(true);
+
+						// Send the POST data if needed
+						String postData = "{\"type\": \"SalesInvoice\",\"companyCode\": \"DEFAULT\",\"date\": \"2023-06-13\", \"customerCode\": \"ABC\",\"addresses\": {\"singleLocation\": {\"line1\": \""
+								+ address1.trim() + "\",\"city\": \"" + city.trim()
+								+ "\",\"country\": \""+useCountry+"\",\"postalCode\": \"" + zipcode.trim()
+								+ "\"}},\"lines\": [{\"number\": \"1\",\"quantity\": 1,\"amount\": 100,\"taxCode\": \"PS081282\"}]}";
+						byte[] postDataBytes = postData.getBytes(StandardCharsets.UTF_8);
+						connection.getOutputStream().write(postDataBytes);
+
+						int responseCode = connection.getResponseCode();
+
+						if (responseCode == HttpURLConnection.HTTP_CREATED) {
+							BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+							String inputLine;
+							StringBuilder response = new StringBuilder();
+
+							while ((inputLine = in.readLine()) != null) {
+								response.append(inputLine);
+							}
+							in.close();
+							System.out.println("Response: " + responseCode + " for id : " + id);
+							// System.out.println(id +" " + "Response: " + response.toString());
+						} else {
+							System.err.println("Request failed with response code: " + responseCode + " " + id);
+						}
+					}
+				}
+			}
+
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private static String createBasicAuthHeader(String username, String password) {
+		String credentials = username + ":" + password;
+		String encodedCredentials = Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
+		return "Basic " + encodedCredentials;
+	}
+}
