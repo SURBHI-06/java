@@ -1,0 +1,103 @@
+package com.finpark.sts.service;
+
+import java.io.IOException;
+import java.lang.reflect.Type;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.stereotype.Service;
+
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+
+@Service
+public class RoutesClient {
+
+	/**
+	 * Gets the route from API.
+	 *
+	 * @param apiKey             the api key
+	 * @param source             the source
+	 * @param destination        the destination
+	 * @param sourceLatLong      the source lat long
+	 * @param destinationLatLong the destination lat long
+	 * @param forSearch
+	 * @return the route from API
+	 * @throws IOException Signals that an I/O exception has occurred.
+	 */
+	public Map<String, Object> getRouteFromAPI(String apiKey, String source, String destination, String sourceLatLong,
+			String destinationLatLong) throws IOException {
+		OkHttpClient client = new OkHttpClient();
+		String url = null;
+		if (source != null && destination != null) {
+			url = "https://maps.googleapis.com/maps/api/directions/json?origin=" + source + "&destination="
+					+ destination + "&key=" + apiKey;
+		} else {
+			url = "https://maps.googleapis.com/maps/api/directions/json?origin=" + sourceLatLong + "&destination="
+					+ destinationLatLong + "&key=" + apiKey;
+		}
+
+		Request request = new Request.Builder().url(url).build();
+
+		try (Response response = client.newCall(request).execute()) {
+			String json = response.body().string();
+			Type type = new TypeToken<Map<String, Object>>() {
+			}.getType();
+			Map<String, Object> data = new Gson().fromJson(json, type);
+
+			// Extract route from JSON
+			Map<String, Object> context = new HashMap<>();
+			if (data.get("status").equals("OK")) {
+				List<Object> routes = (List<Object>) data.get("routes");
+				if (!routes.isEmpty()) {
+					Map<String, Object> route = (Map<String, Object>) routes.get(0);
+					List<Map<String, Object>> legs = (List<Map<String, Object>>) route.get("legs");
+					Map<String, Object> endLocation = (Map<String, Object>) legs.get(0).get("end_location");
+					List<Map<String, Object>> steps = (List<Map<String, Object>>) legs.get(0).get("steps");
+					Map<String, Object> distance = (Map<String, Object>) legs.get(0).get("distance");
+					Map<String, Object> duration = (Map<String, Object>) legs.get(0).get("duration");
+					Map<String, Object> overviewPolyline = (Map<String, Object>) route.get("overview_polyline");
+					// List<LatLng> decoded = PolylineEncoding.decode((String)
+					// overviewPolyline.get("points"));
+					if (!distance.isEmpty()) {
+						context.put("distance", distance.get("value"));
+						context.put("duration", duration.get("value"));
+					}
+					// context.put("decodedPolylines", decoded);
+					context.put("dataApi", json);
+					if (!endLocation.isEmpty()) {
+						context.put("endLocationLat", endLocation.get("lat"));
+						context.put("endLocationLong", endLocation.get("lng"));
+						context.put("steps", steps);
+					}
+				}
+			}
+			return context;
+		}
+	}
+
+	/**
+	 * Gets the search data.
+	 *
+	 * @param source             the source
+	 * @param destination        the destination
+	 * @param sourceLatLong      the source lat long
+	 * @param destinationLatLong the destination lat long
+	 * @param forSearch
+	 * @return
+	 * @return the search data
+	 * @throws IOException Signals that an I/O exception has occurred.
+	 */
+	public Map<String, Object> getSearchData(String source, String destination, String sourceLatLong,
+			String destinationLatLong) throws IOException {
+		String apiKey = "Enter key";
+
+		return getRouteFromAPI(apiKey, source, destination, sourceLatLong, destinationLatLong);
+
+	}
+}
